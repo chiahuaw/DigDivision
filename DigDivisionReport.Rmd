@@ -1,0 +1,134 @@
+---
+title: "道路挖掘核定權責分工研究報告"
+author: "Chiahua.Wang"
+date: "2020/5/22"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r base,echo=F,message=F,warning=F}
+
+library(dplyr)
+library(jsonlite)
+library(ggplot2)
+library(knitr)
+
+roadlist = read.csv(file("road_lev_length.csv",encoding = "big5"),stringsAsFactors = F)
+
+if (file.exists("digcase1year.RData")) {
+  load(file = "digcase1year.RData")
+} else {
+  alldig = fromJSON("http://roaddig.kinmen.gov.tw/KMDigAPI/api/OpenData/GetCaseList?sdate=2015-01-01&edate=2019-12-31")
+alldig = alldig$Data
+
+alldig = mutate(alldig,
+                AllowStart=as.Date(AllowStart),
+                AllowStop=as.Date(AllowStop),
+                SchedStart=as.Date(SchedStart),
+                SchedStop=as.Date(SchedStop),
+                Length=as.numeric(Length),
+                Width=as.numeric(Width),
+                Area=as.numeric(Area))
+alldig$Length[is.na(alldig$Length)] = round(mean(alldig$Length[!is.na(alldig$Length)]),0)
+alldig$Width[is.na(alldig$Width)] = round(mean(alldig$Width[!is.na(alldig$Width)]),0)
+alldig$Area[is.na(alldig$Area)] = round(mean(alldig$Area[!is.na(alldig$Area)]),0)
+
+alldig = filter(alldig,!grepl("^\\(T",EngUse))
+
+alldig =  filter(alldig,CaseStatus %in% c("一般進行狀態","已報完工待收件","已完工收件","已完工","完工回報退件"))
+
+alldig$applydays = as.numeric(difftime(alldig$SchedStop,alldig$SchedStart,units="days"))
+alldig = filter(alldig,!is.na(AllowStart))
+
+alldig$lev = "道路"
+for (i in 1:nrow(alldig)) {
+  for (d in 1:nrow(roadlist)) {
+    if (grepl(roadlist$roadname[d],alldig$Road[i])) {
+      alldig$lev[i] = roadlist$lev[d]
+      break
+    } 
+  }
+}
+
+save(alldig,file="digcase1year.RData")
+}
+
+
+
+```
+
+## 目的
+
+為改善道路挖掘決行層級的劃分決標，在最佳負荷與有效管理的條件下提升整體行政效率，爰以104至108年5年份之道路挖掘許可案紀錄，進行量化分析及研究。
+
+近5年道挖基本資料如下：
+
++ 道路挖掘許可案量：平均每年`r round(nrow(alldig)/5,2)" 件
++ 申請挖掘長度：
+  + 總長：平均每年`r round(sum(alldig$Length)/5,2)` 公尺
+  + 25%位數：`r as.numeric(quantile(alldig$Length,0.25))` 公尺
+  + 中位數：`r as.numeric(quantile(alldig$Length,0.50))` 公尺
+  + 75%位數：`r as.numeric(quantile(alldig$Length,0.75))` 公尺
+  + 平均： `r mean(alldig$Length)` 公尺
+  + 標準差： `r sd(alldig$Length)` 公尺
++ 申請挖掘日數：
+  + 25%位數：`r as.numeric(quantile(alldig$applydays,0.25))` 天
+  + 中位數：`r as.numeric(quantile(alldig$applydays,0.5))` 天
+  + 75%位數：`r as.numeric(quantile(alldig$applydays,0.75))` 天
++ 道路分級：
+  + 涉及主要道路件數：`r nrow(alldig[alldig$lev=="主要道路",])` 件
+  + 涉及次要道路件數：`r nrow(alldig[alldig$lev=="次要道路",])` 件
+  + 其他：`r nrow(alldig[alldig$lev=="道路",])` 件
+
+## 劃分方式
+
+決策層級劃分，主要目的是減量分工，因此使用什麼條件、如何設定門檻為執行重點。為了讓分工能夠以量化指標快速劃分，在此提出三個衡量指標：
+
+1. 涉及道路種類。例如依主要道路、次要道路等劃分，可連結對道路的重要性。
+2. 挖掘長度。可連結對道路破壞的程度。
+3. 申請施工日數。可連結對交通影響的程度。
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("roadlev", label = "道路等級:",
+              choices = c("主次要道路","主要道路","次要道路","所有道路"), selected = "主要道路"),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
