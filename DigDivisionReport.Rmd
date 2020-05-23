@@ -129,7 +129,10 @@ k.m$centers %>%
 1. 第2群數量最多，但大多非位於主次要道路、挖掘長度短、挖屈日數日短。列出範列案件如下：
 
 ```{r f1,echo=F,message=F,warning=F}
-filter(alldig,kmeans==2,CaseID,PPName,EngUse,Road,Lgenth,applydays)
+filter(alldig,kmeans==2) %>% 
+  select(CaseID,PPName,EngUse,Road,Length,applydays) %>% 
+  sample_n(3)
+
 ```
 
 
