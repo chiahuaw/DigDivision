@@ -33,10 +33,12 @@ alldig = mutate(alldig,
                 SchedStop=as.Date(SchedStop),
                 Length=as.numeric(Length),
                 Width=as.numeric(Width),
-                Area=as.numeric(Area))
+                Area=as.numeric(Area),
+                Depth=as.numeric(Depth))
 alldig$Length[is.na(alldig$Length)] = round(mean(alldig$Length[!is.na(alldig$Length)]),0)
 alldig$Width[is.na(alldig$Width)] = round(mean(alldig$Width[!is.na(alldig$Width)]),0)
 alldig$Area[is.na(alldig$Area)] = round(mean(alldig$Area[!is.na(alldig$Area)]),0)
+alldig$Depth[is.na(alldig$Depth)] = round(mean(alldig$Depth[!is.na(alldig$Depth)]),0)
 
 alldig = filter(alldig,!grepl("^\\(T",EngUse))
 
@@ -74,12 +76,18 @@ save(alldig,file="digcase1year.RData")
   + 25%位數：`r as.numeric(quantile(alldig$Length,0.25))` 公尺
   + 中位數：`r as.numeric(quantile(alldig$Length,0.50))` 公尺
   + 75%位數：`r as.numeric(quantile(alldig$Length,0.75))` 公尺
-  + 平均： `r mean(alldig$Length)` 公尺
-  + 標準差： `r sd(alldig$Length)` 公尺
+  + 平均： `r round(mean(alldig$Length),2)` 公尺
+  + 標準差： `r round(sd(alldig$Length),2)` 公尺
+  + 最小： `r min(alldig$Length)` 公尺
+  + 最大： `r max(alldig$Length)` 公尺
 + 申請挖掘日數：
   + 25%位數：`r as.numeric(quantile(alldig$applydays,0.25))` 天
   + 中位數：`r as.numeric(quantile(alldig$applydays,0.5))` 天
   + 75%位數：`r as.numeric(quantile(alldig$applydays,0.75))` 天
+  + 平均： `r round(mean(alldig$applydays),2)` 公尺
+  + 標準差： `r round(sd(alldig$applydays),2)` 公尺
+  + 最小： `r min(alldig$applydays)` 天
+  + 最大： `r max(alldig$applydays)` 天
 + 道路分級：
   + 涉及主要道路件數：`r nrow(alldig[alldig$lev=="主要道路",])` 件
   + 涉及次要道路件數：`r nrow(alldig[alldig$lev=="次要道路",])` 件
@@ -93,7 +101,42 @@ save(alldig,file="digcase1year.RData")
 2. 挖掘長度。可連結對道路破壞的程度。
 3. 申請施工日數。可連結對交通影響的程度。
 
+### 門檻值設定
+
+為找出合理劃分門檻值，我們採用集群分析先對數直進行分群，再檢視各群的數值分析，從而找出適合一層決行者。
+
+```{r kmeans,echo=F,message=F,warning=F}
+
+set.seed(1090524)
+
+k = select(alldig,lev,Length,applydays)
+k$lev1 = ifelse(k$lev=="主要道路",1,0)
+k$lev2 = ifelse(k$lev=="道路",0,1)
+
+k = select(k,-lev)
+k = scale(k)
+
+k.m = kmeans(k,5)
+alldig$kmeans=k.m$cluster  
+k.m$centers %>% 
+  cbind(data.frame(群=c(1:5),件數=k.m$size)) %>% 
+  kable()
+
+```
+
+由分群結果中可看出，大致可以看出幾種類型：
+
+1. 第2群數量最多，但大多非位於主次要道路、挖掘長度短、挖屈日數日短。列出範列案件如下：
+
+```{r f1,echo=F,message=F,warning=F}
+filter(alldig,kmeans==2,CaseID,PPName,EngUse,Road,Lgenth,applydays)
+```
+
+
 ```{r eruptions, echo=FALSE}
+
+
+
 inputPanel(
   selectInput("roadlev", label = "道路等級:",
               choices = c("主次要道路","主要道路","次要道路","所有道路"), selected = "主要道路"),
