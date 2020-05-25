@@ -202,9 +202,9 @@ summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>%
 
 ## 門檻試算
 
-為利討論及評估，除前述量化指標評估與計算說明之外，同步提供互動式計算介面如下，可自行調整「道路等級」及「申挖日數」兩項變數，於圓環圖中心顯示一層決行的比例。
+為利討論及評估，除前述量化指標評估與計算說明之外，同步提供互動式計算介面如下。可自行調整「道路等級」及「申挖日數」兩項變數，於圓環圖中心顯示一層決行的比例，及於下方的表格顯示套用於108年度的一層及二層決行各五件案例。
 
-請至網站自行調整變數試算：https://chiahuaw.shinyapps.io/DigDivision
+請至網站試算：https://chiahuaw.shinyapps.io/DigDivision
 
 ```{r eruptions, echo=FALSE}
 
@@ -240,4 +240,60 @@ renderPlot({
 
 ```
 
+### 一層決行案例
+```{r eruptions 2, echo=FALSE}
 
+
+renderTable({
+  Temp2 = alldig
+  Temp2$lev1 = ifelse(Temp2$lev=="道路",0,ifelse(Temp2$lev=="主要道路",1,3))
+  Temp2$one=0
+  if (input$roadlev=="主要道路") {
+    Temp2$one = ifelse(Temp2$lev1==1,1,0)
+  } else if (input$roadlev=="主次要道路") {
+    Temp2$one = ifelse(Temp2$lev1==3|Temp2$lev1==1,1,0)
+  }
+  Temp2$one = ifelse(Temp2$applydays>=input$days,1,Temp2$one)
+  Temp2$year = format(Temp2$SchedStart,format="%Y")
+  
+  Temp2 =filter(Temp2,one==1,year=="2019") %>% 
+    sample_n(5) %>% 
+    select(CaseID,PPName,EngUse,Road,Length,applydays)
+  Temp2 = mutate(Temp2,link=sprintf("https://roaddig.kinmen.gov.tw/KMDigWeb/CM/Print/ApplyForm?caseid=%s" ,CaseID)) %>% 
+    `names<-`(c("案號","單位","用途","申挖位置","申挖長度","申挖日數","連結"))
+  Temp2
+  
+})
+
+
+
+```
+
+### 二層決行案例
+```{r eruptions 3, echo=FALSE}
+
+
+renderTable({
+  Temp2 = alldig
+  Temp2$lev1 = ifelse(Temp2$lev=="道路",0,ifelse(Temp2$lev=="主要道路",1,3))
+  Temp2$one=0
+  if (input$roadlev=="主要道路") {
+    Temp2$one = ifelse(Temp2$lev1==1,1,0)
+  } else if (input$roadlev=="主次要道路") {
+    Temp2$one = ifelse(Temp2$lev1==3|Temp2$lev1==1,1,0)
+  }
+  Temp2$one = ifelse(Temp2$applydays>=input$days,1,Temp2$one)
+  Temp2$year = format(Temp2$SchedStart,format="%Y")
+  
+  Temp2 =filter(Temp2,one==0,year=="2019") %>% 
+    sample_n(5) %>% 
+    select(CaseID,PPName,EngUse,Road,Length,applydays)
+  Temp2 = mutate(Temp2,link=sprintf("https://roaddig.kinmen.gov.tw/KMDigWeb/CM/Print/ApplyForm?caseid=%s" ,CaseID)) %>% 
+    `names<-`(c("案號","單位","用途","申挖位置","申挖長度","申挖日數","連結"))
+  Temp2
+  
+})
+
+
+
+```
