@@ -119,9 +119,9 @@ save(alldig,file="digcase1year.RData")
 2. 挖掘長度。可連結對道路破壞的程度。
 3. 申請施工日數。可連結對交通影響的程度。
 
-### 門檻值設定
+### 門檻值
 
-為找出合理劃分門檻值，我們採用集群分析先對數直進行分群，再檢視各群的數值分析，從而找出適合一層決行者。
+為找出合理劃分門檻值，我們採用集群分析先對數值進行分群，再檢視各群的數值分析，從而找出適合一層決行者。
 
 ```{r kmeans,echo=F,message=F,warning=F}
 
@@ -177,6 +177,7 @@ rpart.plot(k.tree)
 
 1. 涉及**「主要道路」**道路挖掘者。
 2. 或**「非主要道路」但「申請挖掘日數大於122天」**者。
+3. 專案性道路挖掘許可（禁挖區或重大專案）。
 
 依上述規則分類，預計約有35%之案件為一層決行，餘約65%為二層決行。例如試算108年度一層及二層決行案件量如下表：
 
@@ -198,7 +199,7 @@ summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>%
 
 ```
 
-相較於現行一層決行門檻「主要道路、挖掘長度50公尺以上」，一層決行案量約減少`r nrow(k.predict[(k.predict$Length>=50|k.predict$lev=="主要道路")&k.predict$year=="2019",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
+相較於現行一層決行門檻「主次要道路、50公尺以上」，一層決行案量約減少`r nrow(k.predict[(k.predict$Length>=50|k.predict$lev=="主要道路"|k.predict$lev=="次要道路")&k.predict$year=="2019",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
 
 ## 門檻試算
 
