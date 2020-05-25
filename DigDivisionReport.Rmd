@@ -152,7 +152,7 @@ k.m.table %>%
 1. 不涉及主要道路, 挖掘長度短、挖掘日數短。例如第3群、第5群，合計約佔`r round(sum(k.m.table$件數[(k.m.table$群==3)|(k.m.table$群==5)])/sum(k.m.table$件數),4)*100`%。
 2. 涉及主要道路，挖掘長度及日數較短。例如第4群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==4)])/sum(k.m.table$件數),4)*100`%。
 3. 不涉及主要道路，挖掘長度及日數長。例如第2群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==2)])/sum(k.m.table$件數),4)*100`%。
-4. 涉及主要道路，挖掘長度及日數很長短。例如第1群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==1)])/sum(k.m.table$件數),4)*100`%。
+4. 涉及主要道路，挖掘長度及日數很長。例如第1群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==1)])/sum(k.m.table$件數),4)*100`%。
 
 挖掘長度與日數正相關，為了減少決行分層時的量化指數數量，建議採「挖掘日數」為指標；另再採「主要道路」，共兩項指標。
 
@@ -203,6 +203,8 @@ summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>%
 ## 門檻試算
 
 為利討論及評估，除前述量化指標評估與計算說明之外，同步提供互動式計算介面如下，可自行調整「道路等級」及「申挖日數」兩項變數，於圓環圖中心顯示一層決行的比例。
+
+請至網站自行調整變數試算：https://chiahuaw.shinyapps.io/DigDivision
 
 ```{r eruptions, echo=FALSE}
 
