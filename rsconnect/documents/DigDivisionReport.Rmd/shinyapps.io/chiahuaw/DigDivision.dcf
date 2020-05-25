@@ -5,8 +5,8 @@ account: chiahuaw
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2351504
-bundleId: 3186117
+bundleId: 3186191
 url: https://chiahuaw.shinyapps.io/DigDivision/
-when: 1590379871.7515
+when: 1590382607.74649
 asMultiple: FALSE
 asStatic: FALSE

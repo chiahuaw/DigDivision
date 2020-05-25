@@ -84,7 +84,7 @@ save(alldig,file="digcase1year.RData")
 
 ## 目的
 
-為改善道路挖掘決行層級的劃分決標，在最佳負荷與有效管理的條件下提升整體行政效率，爰以104至108年5年份之道路挖掘許可案紀錄，進行量化分析及研究。
+為改善道路挖掘決行層級的劃分，在最佳負荷與有效管理的條件下提升整體行政效率，爰以104至108年5年份之道路挖掘許可案紀錄，進行量化分析及研究。
 
 近5年道挖基本資料如下：
 
@@ -102,8 +102,8 @@ save(alldig,file="digcase1year.RData")
   - 25%位數：`r as.numeric(quantile(alldig$applydays,0.25))` 天
   - 中位數：`r as.numeric(quantile(alldig$applydays,0.5))` 天
   - 75%位數：`r as.numeric(quantile(alldig$applydays,0.75))` 天
-  - 平均： `r round(mean(alldig$applydays),2)` 公尺
-  - 標準差： `r round(sd(alldig$applydays),2)` 公尺
+  - 平均： `r round(mean(alldig$applydays),2)` 天
+  - 標準差： `r round(sd(alldig$applydays),2)` 天
   - 最小： `r min(alldig$applydays)` 天
   - 最大： `r max(alldig$applydays)` 天
 - 道路分級：
@@ -113,7 +113,7 @@ save(alldig,file="digcase1year.RData")
 
 ## 劃分方式
 
-決策層級劃分，主要目的是過適當的授權達成減量分工，因此使用什麼條件、如何設定門檻為執行重點。為了讓分工能夠以量化指標快速劃分，在此提出三個衡量指標：
+決策層級劃分，主要目的是透過**適當的授權**達成減量分工，因此使用什麼條件、如何設定門檻為執行重點。為了讓分工能夠以量化指標快速劃分，在此提出三個衡量指標：
 
 1. 涉及道路種類。例如依主要道路、次要道路等劃分，可連結對道路的重要性。
 2. 挖掘長度。可連結對道路破壞的程度。
@@ -156,7 +156,7 @@ k.m.table %>%
 
 挖掘長度與日數正相關，為了減少決行分層時的量化指數數量，建議採「挖掘日數」為指標；另再採「主要道路」，共兩項指標。
 
-以此分級，建議取分級門檻為涉及「主要道路」、「申挖日數長」者為一層決行，例如第1、2、4群。其中申挖日數門檻部分，以決策樹演算法進行分析：
+以此分級，建議取分級門檻為涉及「**主要道路**」、「**申挖日數長**」者為一層決行，例如第1、2、4群。其中申挖日數門檻部分，以決策樹演算法進行分析：
 
 ```{r tree,echo=F,message=F,warning=F}
 
@@ -175,8 +175,8 @@ rpart.plot(k.tree)
 
 建議一層決行門檻如下：
 
-1. 涉及「主要道路」道路挖掘者。
-2. 或「非主要道路」但「申請挖掘日數大於122天」者。
+1. 涉及**「主要道路」**道路挖掘者。
+2. 或**「非主要道路」但「申請挖掘日數大於122天」**者。
 
 依上述規則分類，預計約有35%之案件為一層決行，餘約65%為二層決行。例如試算108年度一層及二層決行案件量如下表：
 
@@ -198,7 +198,7 @@ summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>%
 
 ```
 
-相較於現行一層決行門檻「主要道路、挖掘長度50公尺以上」，一層決行案量約減少`r nrow(k.predict[k.predict$Length>=50|k.predict$lev=="主要道路",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
+相較於現行一層決行門檻「主要道路、挖掘長度50公尺以上」，一層決行案量約減少`r nrow(k.predict[(k.predict$Length>=50|k.predict$lev=="主要道路")&k.predict$year=="2019",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
 
 ## 門檻試算
 
