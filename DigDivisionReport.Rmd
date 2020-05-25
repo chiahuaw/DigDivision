@@ -198,6 +198,8 @@ summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>%
 
 ```
 
+相較於現行一層決行門檻「主要道路、挖掘長度50公尺以上」，一層決行案量約減少`r nrow(k.predict[k.predict$Length>=50|k.predict$lev=="主要道路",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
+
 ## 門檻試算
 
 為利討論及評估，除前述量化指標評估與計算說明之外，同步提供互動式計算介面如下，可自行調整「道路等級」及「申挖日數」兩項變數，於圓環圖中心顯示一層決行的比例。

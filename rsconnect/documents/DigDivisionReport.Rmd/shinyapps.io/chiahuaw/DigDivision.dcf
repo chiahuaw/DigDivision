@@ -1,0 +1,12 @@
+name: DigDivision
+title: DigDivision
+username:
+account: chiahuaw
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2351504
+bundleId: 3186117
+url: https://chiahuaw.shinyapps.io/DigDivision/
+when: 1590379871.7515
+asMultiple: FALSE
+asStatic: FALSE
