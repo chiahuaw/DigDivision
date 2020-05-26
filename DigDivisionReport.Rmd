@@ -6,6 +6,8 @@ output: html_document
 runtime: shiny
 ---
 
+<div style="font-family:SourceHanSansTC-Regular,思源黑體 標準,微軟正黑體, Microsoft JhengHei,msjh;font-size:16px">
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -78,7 +80,7 @@ for (i in 1:nrow(alldig)) {
 save(alldig,file="digcase1year.RData")
 }
 
-
+alldig$year = year=format(alldig$SchedStart,format="%Y")
 
 ```
 
@@ -121,7 +123,7 @@ save(alldig,file="digcase1year.RData")
 
 ### 門檻值
 
-為找出合理劃分門檻值，我們採用集群分析先對數值進行分群，再檢視各群的數值分析，從而找出適合一層決行者。
+為找出合理劃分門檻值，我們採用集群分析先對數值進行分群，再檢視各群的數值分析，從而找出適合1層決行者。
 
 ```{r kmeans,echo=F,message=F,warning=F}
 
@@ -129,7 +131,7 @@ set.seed(1090524)
 
 k = select(alldig,lev,Length,applydays)
 k$lev1 = ifelse(k$lev=="主要道路",1,0)
-k$lev2 = ifelse(k$lev=="道路",0,1)
+k$lev2 = ifelse(k$lev=="次要道路",0,1)
 
 k = select(k,-lev)
 k = scale(k)
@@ -138,68 +140,99 @@ k.m = kmeans(k,5)
 alldig$kmeans=k.m$cluster  
 k.m.table = k.m$centers %>% 
   cbind(data.frame('件數'=k.m$size)) %>%
-  arrange(件數) %>% 
+  #arrange(desc(Length)) %>% 
   cbind(data.frame('群'=c(1:nrow(k.m$centers))))
 
 k.m.table %>%   
 `names<-`(c("申挖長度","申挖日數","涉及主要道路","涉及主次要道路","件數","群別")) %>% 
   kable()
-
+k.m = as.data.frame(k.m$centers)
+k1 = as.numeric(rownames(k.m[(k.m$Length>=1),]))
 ```
 
-由分群結果中可看出，大致可以看出幾種類型：
+按集群分析結果進行分級，建議取分級門檻為涉及「**主要道路**」、「**申挖長度較長**」、「**申挖日數長**」者為第1層決行，並就涉主要道路但挖掘長度較短的部分，再進一步進行集群分析如下：
 
-1. 不涉及主要道路, 挖掘長度短、挖掘日數短。例如第3群、第5群，合計約佔`r round(sum(k.m.table$件數[(k.m.table$群==3)|(k.m.table$群==5)])/sum(k.m.table$件數),4)*100`%。
-2. 涉及主要道路，挖掘長度及日數較短。例如第4群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==4)])/sum(k.m.table$件數),4)*100`%。
-3. 不涉及主要道路，挖掘長度及日數長。例如第2群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==2)])/sum(k.m.table$件數),4)*100`%。
-4. 涉及主要道路，挖掘長度及日數很長。例如第1群，約佔 `r round(sum(k.m.table$件數[(k.m.table$群==1)])/sum(k.m.table$件數),4)*100`%。
+```{r kmeans2,echo=F,message=F,warning=F}
 
-挖掘長度與日數正相關，為了減少決行分層時的量化指數數量，建議採「挖掘日數」為指標；另再採「主要道路」，共兩項指標。
+a = as.numeric(rownames(k.m[k.m$Length<1&k.m$lev1>1,]))
+k = select(filter(alldig,kmeans==a),Length,applydays)
 
-以此分級，建議取分級門檻為涉及「**主要道路**」、「**申挖日數長**」者為一層決行，例如第1、2、4群。其中申挖日數門檻部分，以決策樹演算法進行分析：
+k = scale(k)
 
-```{r tree,echo=F,message=F,warning=F}
+k.m = kmeans(k,5)
+alldig$kmeans2=0
+alldig$kmeans2[alldig$kmeans==a]=k.m$cluster  
+k.m.table = k.m$centers %>% 
+  cbind(data.frame('件數'=k.m$size)) %>%
+  #arrange(desc(Length)) %>% 
+  cbind(data.frame('群'=c(1:nrow(k.m$centers))))
+
+k.m.table %>%   
+`names<-`(c("申挖長度","申挖日數","件數","群別")) %>% 
+  kable()
+k.m = as.data.frame(k.m$centers)
+k2 = as.numeric(rownames(k.m[(k.m$Length>=1)|(k.m$applydays>=1),]))#
+```
+
+
+可以發現部分群別申挖長度相對較長。因此我們選擇**位於主要道路、挖掘長度較長、申挖日數較久**者為第1層決行。
+
+其中申挖日數及長度的量化門檻部分，以決策樹演算法進行分析：
+
+```{r tree1,echo=F,message=F,warning=F}
 
 library(rpart)
 library(rpart.plot)
 
 k.tree = alldig
-k.tree$one = ifelse((k.tree$kmeans==1|k.tree$kmeans==2|k.tree$kmeans==4),1,0)
+k.tree$one = ifelse((k.tree$kmeans %in% k1)|(k.tree$kmeans2 %in% k2),1,0)
 k.tree$lev1 = ifelse(k.tree$lev=="主要道路",1,0)
 
-k.tree = rpart(one~applydays+lev1,data=k.tree)
-rpart.plot(k.tree)
-```
-
-## 結論：
-
-建議一層決行門檻如下：
-
-1. 涉及**「主要道路」**道路挖掘者。
-2. 或**「非主要道路」但「申請挖掘日數大於122天」**者。
-3. 專案性道路挖掘許可（禁挖區或重大專案）。
-
-依上述規則分類，預計約有35%之案件為一層決行，餘約65%為二層決行。例如試算108年度一層及二層決行案件量如下表：
-
-```{r predict,echo=F,message=F,warning=F}
+k.tree = rpart(one~applydays+Length+lev1,data=k.tree)
+rpart.plot(k.tree,type=5)
 
 k.predict = alldig
 k.predict$one = 0
 k.predict$lev1 = ifelse(k.predict$lev=="主要道路",1,0)
 
-k.predict$one = round(predict(k.tree,newdata = k.predict),0)
+k.predict$one = predict(k.tree,newdata = k.predict)
 k.predict$year = format(k.predict$SchedStart,format="%Y")
+alldig$tree1 = k.predict$one
 
-k.predict$one = ifelse(k.predict$one==1,"一層","二層")
+#table(alldig$tree1)/nrow(alldig)
 
-summarise(group_by(k.predict[k.predict$year=="2019",],one),n=n()) %>% 
+
+```
+
+因此我們得到第1層決行條件如下：
+
+1. 主要道路，且申挖日數大於53天。
+2. 或非屬主要道路，且申挖日數大於130天。
+3. 或非屬主要道路，但申挖日數未達130天且申挖長度大於579公尺。
+4. 或申挖日數未達53天，但申挖長度大於502公尺。
+
+## 結論：
+
+因量化分析後的決行條件較為複雜，現行分層決行判斷為人工判斷並非電腦自動識別，因此為利實務執行，建議簡化。原三項變數簡化為二項，並配合調整量化門檻後，建議第1層決行條件如下：
+
+1. 位於**主要道路**，且**申挖日期大於25天**者。
+2. 或**非位於主要道路**，但**申挖日期大於200天**者。
+3. 專案性道路挖掘許可（禁挖區或重大專案）。
+
+依上述規則分類，預計約有`r round((nrow(alldig[(alldig$lev=="主要道路"&alldig$applydays>=25)|(alldig$lev!="主要道路"&alldig$applydays>=200),]))/nrow(alldig),4)*100`%之案件為第1層決行，餘約`r 100-round((nrow(alldig[(alldig$lev=="主要道路"&alldig$applydays>=25)|(alldig$lev!="主要道路"&alldig$applydays>=200),]))/nrow(alldig),4)*100`%為第2層決行。例如試算近3年度一層及二層決行案件量如下表：
+
+```{r predict,echo=F,message=F,warning=F}
+
+k.predict$one2 = ifelse((k.predict$lev=="主要道路"&k.predict$applydays>=25)|(k.predict$lev!="主要道路"&k.predict$applydays>=200),"一層","二層")
+
+summarise(group_by(k.predict[k.predict$year %in% c("2019","2018","2017"),],year,one2),n=n()) %>% 
   data.frame() %>% 
-  `names<-`(c("決行層級","件數")) %>% 
+  `names<-`(c("決行層級","年度","件數")) %>% 
   kable()
 
 ```
 
-相較於現行一層決行門檻「主次要道路、50公尺以上」，一層決行案量約減少`r nrow(k.predict[(k.predict$Length>=50|k.predict$lev=="主要道路"|k.predict$lev=="次要道路")&k.predict$year=="2019",])-sum(k.predict$one[k.predict$year=="2019"]=="一層")`件。
+相較於現行1層決行門檻「主次要道路、50公尺以上」，一層決行案量平均每年約可減少`r round((nrow(k.predict[(k.predict$Length>=50|k.predict$lev=="主要道路"|k.predict$lev=="次要道路")&k.predict$year %in% c("2019","2018","2017"),])-sum(k.predict$one2[k.predict$year %in% c("2019","2018","2017")]=="一層"))/3,2)`件。
 
 ## 門檻試算
 
@@ -213,8 +246,10 @@ inputPanel(
   selectInput("roadlev", label = "一層決行道路等級:",
               choices = c("主要道路","主次要道路","所有道路"), selected = "主要道路"),
   
-  sliderInput("days", label = "一層決行申挖日數:",
-              min = 1, max = 365, value = 122, step = 1)
+  sliderInput("days1", label = "申挖日數條件:",
+              min = 1, max = 365, value = 25, step = 1),
+  sliderInput("days2", label = "超長申挖日數條件:",
+              min = 1, max = 500, value = 200, step = 1)
 )
 
 
@@ -223,12 +258,20 @@ renderPlot({
   Temp = alldig
   Temp$lev1 = ifelse(Temp$lev=="道路",0,ifelse(Temp$lev=="主要道路",1,3))
   Temp$one=0
+  
   if (input$roadlev=="主要道路") {
-    Temp$one = ifelse(Temp$lev1==1,1,0)
-  } else if (input$roadlev=="主次要道路") {
-    Temp$one = ifelse(Temp$lev1==3|Temp$lev1==1,1,0)
+    Temp$lev1 = ifelse(Temp$lev=="主要道路",1,0)
   }
-  Temp$one = ifelse(Temp$applydays>=input$days,1,Temp$one)
+  
+  if (input$roadlev=="主次要道路") {
+    Temp$lev1 = ifelse(Temp$lev!="道路",1,0)
+  }
+  
+  if (input$roadlev=="所有道路") {
+    Temp$lev1 = 1
+  }
+  
+  Temp$one = ifelse(((Temp$lev1==1)&(Temp$applydays>=input$days1))|((Temp$lev1!=1)&(Temp$applydays>=input$days2)),1,0)
   
   Temp = summarise(group_by(Temp,one),n=n(),ratio=(round(n/nrow(Temp),4)*100)) %>% 
     data.frame()
@@ -249,13 +292,20 @@ renderTable({
   Temp2 = alldig
   Temp2$lev1 = ifelse(Temp2$lev=="道路",0,ifelse(Temp2$lev=="主要道路",1,3))
   Temp2$one=0
+  
   if (input$roadlev=="主要道路") {
-    Temp2$one = ifelse(Temp2$lev1==1,1,0)
-  } else if (input$roadlev=="主次要道路") {
-    Temp2$one = ifelse(Temp2$lev1==3|Temp2$lev1==1,1,0)
+    Temp2$lev1 = ifelse(Temp2$lev=="主要道路",1,0)
   }
-  Temp2$one = ifelse(Temp2$applydays>=input$days,1,Temp2$one)
-  Temp2$year = format(Temp2$SchedStart,format="%Y")
+  
+  if (input$roadlev=="主次要道路") {
+    Temp2$lev1 = ifelse(Temp2$lev!="道路",1,0)
+  }
+  
+  if (input$roadlev=="所有道路") {
+    Temp2$lev1 = 1
+  }
+  
+  Temp2$one = ifelse(((Temp2$lev1==1)&(Temp2$applydays>=input$days1))|((Temp2$lev1!=1)&(Temp2$applydays>=input$days2)),1,0)
   
   Temp2 =filter(Temp2,one==1,year=="2019") %>% 
     sample_n(5) %>% 
@@ -278,13 +328,20 @@ renderTable({
   Temp2 = alldig
   Temp2$lev1 = ifelse(Temp2$lev=="道路",0,ifelse(Temp2$lev=="主要道路",1,3))
   Temp2$one=0
+  
   if (input$roadlev=="主要道路") {
-    Temp2$one = ifelse(Temp2$lev1==1,1,0)
-  } else if (input$roadlev=="主次要道路") {
-    Temp2$one = ifelse(Temp2$lev1==3|Temp2$lev1==1,1,0)
+    Temp2$lev1 = ifelse(Temp2$lev=="主要道路",1,0)
   }
-  Temp2$one = ifelse(Temp2$applydays>=input$days,1,Temp2$one)
-  Temp2$year = format(Temp2$SchedStart,format="%Y")
+  
+  if (input$roadlev=="主次要道路") {
+    Temp2$lev1 = ifelse(Temp2$lev!="道路",1,0)
+  }
+  
+  if (input$roadlev=="所有道路") {
+    Temp2$lev1 = 1
+  }
+  
+  Temp2$one = ifelse(((Temp2$lev1==1)&(Temp2$applydays>=input$days1))|((Temp2$lev1!=1)&(Temp2$applydays>=input$days2)),1,0)
   
   Temp2 =filter(Temp2,one==0,year=="2019") %>% 
     sample_n(5) %>% 
@@ -294,7 +351,9 @@ renderTable({
   Temp2
   
 })
-
-
+  
 
 ```
+
+
+</div>
